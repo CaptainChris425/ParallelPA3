@@ -43,12 +43,10 @@ int main(int argc, char *argv[]){
 		
 		MPI_Bcast(buf,p,MPI_INT,0,MPI_COMM_WORLD);
 	}	
-	else{
-//	MPI_Barrier(MPI_COMM_WORLD);
-		MPI_Bcast(buf,p,MPI_INT,0,MPI_COMM_WORLD);
+	MPI_Barrier(MPI_COMM_WORLD);
+	MPI_Bcast(buf,p,MPI_INT,0,MPI_COMM_WORLD);
 //	cout << rank << " is my rank and " << buf[rank] << " is my rand number\n";
 	printf("%d is my rank and %d is my rand number\n", rank, buf[rank]);
-	}
 	MPI_Finalize();
 }
 
