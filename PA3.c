@@ -39,6 +39,7 @@ void Simulate(int ** matrix, int n, int Generations, int rank, int p){
     MPI_Status status[2];  
         
     int i,j,k,l, rankToSendLastRow, rankToSendFirstRow, rankRecTopRowFrom, rankRecBottomRowFrom;
+	int printrank, pi, pj;
     int neighborsAlive = 0;
     int* topRow = (int*)malloc(sizeof(int)*n);
     int* bottomRow = (int*)malloc(sizeof(int)*n);  
@@ -235,7 +236,22 @@ void Simulate(int ** matrix, int n, int Generations, int rank, int p){
         newMatrix = temp;
        
         
-        if(i == 2){
+        if(i%10 == 0){
+			for(printrank = 1; printrank<p+1; printrank++){
+				if (rank == printrank){
+					for(pj = 0; pj< n; pj++){ printf("---");}
+
+				    for(pi = 0; pi < n/p; pi++){
+   			     		for(pj = 0; pj< n; pj++){
+   		    	     		printf("| %d |",rows[i][j]);
+       			 		}
+						printf("\n");
+    				}
+				}
+				MPI_Barrier(MPI_COMM_WORLD);
+ 			}
+		}
+		/*
             printf("\n-------------------------------------------------------");
             for(i = 0; i < n/p; i++){
                 for(j = 0; j < n; j++){
@@ -245,6 +261,7 @@ void Simulate(int ** matrix, int n, int Generations, int rank, int p){
             } 
             printf("-------------------------------------------------------\n");
         }
+		*/
     }
     
 }
