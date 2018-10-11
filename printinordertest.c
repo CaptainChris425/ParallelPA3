@@ -15,9 +15,9 @@ int main(int argc, char *argv[]){
 
 	int i;
 	for(i=0; i<p;i++){
-		if(i == rank)
-			printf("My rank is %d",rank);
 		MPI_Barrier(MPI_COMM_WORLD);	
+		if(i == rank)
+			printf("My rank is %d\n",rank);
 	}
 	MPI_Finalize();
 }

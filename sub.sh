@@ -1,2 +1,2 @@
 #!/bin/sh
-mpirun -np 5 out 
+mpirun -np 8 out 
