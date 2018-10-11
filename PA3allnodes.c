@@ -240,18 +240,18 @@ void Simulate(int ** matrix, int n, int Generations, int rank, int p){
 	//Print the full matrix in order by rank
 		//by barriering of a for loop that prints only the rank that matches the iteration
         if(i%10 == 0){
-		for(printrank = 0; printrank<p+1; printrank++){
-			MPI_Barrier(MPI_COMM_WORLD);
-			if (rank == printrank){
-				for(pj = 0; pj< n; pj++){ printf("--%d--",rank);}
+		for(printrank = 0; printrank<=p; printrank++){ //for each rank 0-p
+			MPI_Barrier(MPI_COMM_WORLD); //Barrier off each proccess so they all stay on the same for loop itteration
+			if (rank == printrank){ //If it is the correct itteration for the rank
+				for(pj = 0; pj< n; pj++){ printf("--%d--",rank);} //print a line to separate procceses
 				printf("\n");
-				for(pi = 0; pi < n/p; pi++){
-   			     		for(pj = 0; pj< n; pj++){
-   		    	     			printf("| %d |",matrix[pi][pj]);
+				for(pi = 0; pi < n/p; pi++){	//For each n/p row
+   			     		for(pj = 0; pj< n; pj++){ //For each n value in the row
+   		    	     			printf("| %d |",matrix[pi][pj]); //print its value
        			 		}
 					printf("\n");
     				}
-				for(pj = 0; pj< n; pj++){ printf("-----");}
+				for(pj = 0; pj< n; pj++){ printf("-----");} //Another separation line
 				printf("\n");
 			}
 			
