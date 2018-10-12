@@ -1,12 +1,13 @@
 #include <stdio.h>
-
 #include <mpi.h>
 #include <time.h>
 #include <stdlib.h>
 #include <sys/time.h>
 #include <assert.h>
 
-
+struct timeval ts1, ts2;
+int simulationtime = 0;
+int maxsimtime;
 
 int** GenerateInitialGoL(int random_seed, int n, int p){
     srand(random_seed);
@@ -53,7 +54,7 @@ void Simulate(int ** matrix, int n, int Generations, int rank, int p){
     }
 
     for(i = 0; i < Generations; i++){
-
+	gettimeofday(&ts1,NULL);
     	MPI_Barrier(MPI_COMM_WORLD);
         /*************************** SENDING BOTTOM ROW ******************************/
         //sending last row
@@ -235,11 +236,17 @@ void Simulate(int ** matrix, int n, int Generations, int rank, int p){
         temp = matrix;
         matrix = newMatrix; 
         newMatrix = temp;
+	gettimeofday(&ts2, NULL);
+	simulationtime = simulationtime + ((ts2.tv_sec - ts1.tv_sec)*1000000 + (ts2.tv_usec - ts1.tv_usec));
 	//Print the generations
-	if(rank==0) printf("\n Generation %d\n", i);
+	if(rank==0){
+		 printf("\n Generation %d\n", i);
+		 printf("\nThe time has been %d\n",simulationtime);
+	}
 	//Print the full matrix in order by rank
 		//by barriering of a for loop that prints only the rank that matches the iteration
-        if(i%10 == 0){
+        //if(i%10 == 0){
+	if(10 == 10){
 		for(printrank = 0; printrank<=p; printrank++){ //for each rank 0-p
 			MPI_Barrier(MPI_COMM_WORLD); //Barrier off each proccess so they all stay on the same for loop itteration
 			if (rank == printrank){ //If it is the correct itteration for the rank
@@ -308,18 +315,20 @@ int main(int argc, char *argv[]){
             //MPI_Barrier(MPI_COMM_WORLD);
         //}
     }
-        int cur_process_seed;
-        int* seeds_rec = (int*)malloc(sizeof(int)*p-1);
-        int** matrix;
-         //Save the array of seeds broadcasted by process zero
-        MPI_Bcast(seeds_rec, p, MPI_INT, 0, MPI_COMM_WORLD);
-        //Obtain the process specific seed
-        cur_process_seed = seeds_rec[rank];
-        matrix = GenerateInitialGoL(cur_process_seed, n, p);
-        
-        Simulate(matrix, n, Generations, rank, p-1);
-       
-     
+    int cur_process_seed;
+    int* seeds_rec = (int*)malloc(sizeof(int)*p);
+    int** matrix;
+    //Save the array of seeds broadcasted by process zero
+    MPI_Bcast(seeds_rec, p, MPI_INT, 0, MPI_COMM_WORLD);
+   //Obtain the process specific seed
+    cur_process_seed = seeds_rec[rank];
+    matrix = GenerateInitialGoL(cur_process_seed, n, p);
+    Simulate(matrix, n, Generations, rank, p-1);
+  
+    MPI_Reduce(&simulationtime, &maxsimtime, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
+    if(rank == 0)
+	printf("The time for simulating %d generations on %d (n) total rows is [ %d ]",Generations,n,maxsimtime);
+
     MPI_Finalize();
 
     
