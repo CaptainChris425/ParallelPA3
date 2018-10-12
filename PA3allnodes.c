@@ -5,9 +5,15 @@
 #include <sys/time.h>
 #include <assert.h>
 
+
+struct timeval start, end;
+double totalCommTime = 0;
+double maxTotalCommTime = 0;
+
 struct timeval ts1, ts2;
 int simulationtime = 0;
 int maxsimtime;
+
 
 int** GenerateInitialGoL(int random_seed, int n, int p){
     srand(random_seed);
@@ -54,8 +60,14 @@ void Simulate(int ** matrix, int n, int Generations, int rank, int p){
     }
 
     for(i = 0; i < Generations; i++){
-	gettimeofday(&ts1,NULL);
+	    gettimeofday(&ts1,NULL);
+
+        gettimeofday(&start, NULL);
     	MPI_Barrier(MPI_COMM_WORLD);
+        gettimeofday(&end, NULL);
+
+      totalCommTime += (end.tv_sec - start.tv_sec)*1000000 + (end.tv_usec - start.tv_usec);
+
         /*************************** SENDING BOTTOM ROW ******************************/
         //sending last row
         if(rank == p){ //If this is the last process then its last row will be sent to process 1
@@ -64,8 +76,12 @@ void Simulate(int ** matrix, int n, int Generations, int rank, int p){
             rankToSendLastRow = rank + 1;
         }
         //Send last row to respective process
+
+        gettimeofday(&start, NULL);
         MPI_Send(matrix[(n/p) - 1], n, MPI_INT, rankToSendLastRow, 0, MPI_COMM_WORLD);
-        
+        gettimeofday(&end, NULL);
+
+        totalCommTime += (end.tv_sec - start.tv_sec)*1000000 + (end.tv_usec - start.tv_usec);
         
 
         /*************************** RECEIVING TOP ROW ******************************/
@@ -76,7 +92,11 @@ void Simulate(int ** matrix, int n, int Generations, int rank, int p){
             rankRecTopRowFrom = rank - 1;
         }
         //Recieve top row from respective process
+        gettimeofday(&start, NULL);
         MPI_Recv(topRow, n, MPI_INT, rankRecTopRowFrom, MPI_ANY_TAG, MPI_COMM_WORLD, &status[0]);
+        gettimeofday(&end, NULL);
+
+        totalCommTime += (end.tv_sec - start.tv_sec)*1000000 + (end.tv_usec - start.tv_usec);
         
         
         //MPI_Barrier(MPI_COMM_WORLD);
@@ -90,8 +110,12 @@ void Simulate(int ** matrix, int n, int Generations, int rank, int p){
             rankToSendFirstRow = rank - 1;
         }
 
-        MPI_Send(matrix[0], n, MPI_INT, rankToSendFirstRow, 0, MPI_COMM_WORLD);
 
+        gettimeofday(&start, NULL);
+        MPI_Send(matrix[0], n, MPI_INT, rankToSendFirstRow, 0, MPI_COMM_WORLD);
+        gettimeofday(&end, NULL);
+
+        totalCommTime += (end.tv_sec - start.tv_sec)*1000000 + (end.tv_usec - start.tv_usec);
         /*************************** RECEIVING BOTTOM ROW ******************************/
 
         if(rank == p){ //If this process is the last process, then the bottom row will be obtained from the first process
@@ -101,8 +125,15 @@ void Simulate(int ** matrix, int n, int Generations, int rank, int p){
         }
         
         //Recieve bottom row from respective process
-        MPI_Recv(bottomRow, n, MPI_INT, rankRecBottomRowFrom, MPI_ANY_TAG, MPI_COMM_WORLD, &status[1]);
+
         
+        gettimeofday(&start, NULL);
+
+        MPI_Recv(bottomRow, n, MPI_INT, rankRecBottomRowFrom, MPI_ANY_TAG, MPI_COMM_WORLD, &status[1]);
+        gettimeofday(&end, NULL);
+
+        totalCommTime += (end.tv_sec - start.tv_sec)*1000000 + (end.tv_usec - start.tv_usec);
+
         for(j = 0; j < (n/p); j++){
             for(k = 0; k < n; k++){
                 neighborsAlive = 0;
@@ -309,32 +340,37 @@ int main(int argc, char *argv[]){
             seeds_send[i] = rand()%1000;
         }
 
+        gettimeofday(&start, NULL);
         MPI_Bcast(seeds_send, p, MPI_INT, 0, MPI_COMM_WORLD);
+        gettimeofday(&end, NULL);
+
+        totalCommTime += (end.tv_sec - start.tv_sec)*1000000 + (end.tv_usec - start.tv_usec);
         //MPI_Barrier(MPI_COMM_WORLD);
         //for(i = 0; i < Generations; i++){
             //MPI_Barrier(MPI_COMM_WORLD);
         //}
     }
+
     int cur_process_seed;
     int* seeds_rec = (int*)malloc(sizeof(int)*p);
     int** matrix;
     //Save the array of seeds broadcasted by process zero
-    MPI_Bcast(seeds_rec, p, MPI_INT, 0, MPI_COMM_WORLD);
+    gettimeofday(&start, NULL);
+        MPI_Bcast(seeds_rec, p, MPI_INT, 0, MPI_COMM_WORLD);
+        gettimeofday(&end, NULL);
+
+        totalCommTime += (end.tv_sec - start.tv_sec)*1000000 + (end.tv_usec - start.tv_usec);
    //Obtain the process specific seed
     cur_process_seed = seeds_rec[rank];
     matrix = GenerateInitialGoL(cur_process_seed, n, p);
     Simulate(matrix, n, Generations, rank, p-1);
-  
+    MPI_Reduce(&totalCommTime, &maxTotalCommTime, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     MPI_Reduce(&simulationtime, &maxsimtime, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
-    if(rank == 0)
+    if(rank == 0){
 	printf("The time for simulating %d generations on %d (n) total rows is [ %d ]",Generations,n,maxsimtime);
-
+   printf("Max total communication time is: %.8lf\n", maxTotalCommTime);
+   }
     MPI_Finalize();
 
     
-
 }
-
-
-
-
