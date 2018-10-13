@@ -4,11 +4,11 @@
 #include <stdlib.h>
 #include <sys/time.h>
 #include <assert.h>
-
+#include <string.h>
 
 struct timeval start, end;
-double totalCommTime = 0;
-double maxTotalCommTime = 0;
+int totalCommTime = 0;
+int maxTotalCommTime = 0;
 
 struct timeval ts1, ts2;
 int simulationtime = 0;
@@ -70,7 +70,7 @@ void Simulate(int ** matrix, int n, int Generations, int rank, int p){
 
         /*************************** SENDING BOTTOM ROW ******************************/
         //sending last row
-        if(rank == p){ //If this is the last process then its last row will be sent to process 1
+        if(rank == p-1){ //If this is the last process then its last row will be sent to process 1
             rankToSendLastRow = 0;
         } else{ //If this is not the last process, then its last row will be sent to process 1 rank higher
             rankToSendLastRow = rank + 1;
@@ -87,7 +87,7 @@ void Simulate(int ** matrix, int n, int Generations, int rank, int p){
         /*************************** RECEIVING TOP ROW ******************************/
          
         if(rank == 0){ //If this is first process, then top row will be obtained from last process
-            rankRecTopRowFrom = p;
+            rankRecTopRowFrom = p-1;
         }else{ //If this process is anything but the first, then top row will be obtained from process 1 rank lower
             rankRecTopRowFrom = rank - 1;
         }
@@ -105,7 +105,7 @@ void Simulate(int ** matrix, int n, int Generations, int rank, int p){
         /*************************** SENDING TOP ROW ******************************/
 
         if(rank == 0){ //If this is the first process, then the top row will be sent to the last process
-            rankToSendFirstRow = p;
+            rankToSendFirstRow = p-1;
         } else{ //If this is not the first process, then the top row will be sent to the process 1 rank lower
             rankToSendFirstRow = rank - 1;
         }
@@ -118,7 +118,7 @@ void Simulate(int ** matrix, int n, int Generations, int rank, int p){
         totalCommTime += (end.tv_sec - start.tv_sec)*1000000 + (end.tv_usec - start.tv_usec);
         /*************************** RECEIVING BOTTOM ROW ******************************/
 
-        if(rank == p){ //If this process is the last process, then the bottom row will be obtained from the first process
+        if(rank == p-1){ //If this process is the last process, then the bottom row will be obtained from the first process
             rankRecBottomRowFrom = 0;
         } else { //If this is not the last process, then the bottom row will be obtained from the process 1 rank higher
             rankRecBottomRowFrom = rank + 1;
@@ -325,7 +325,9 @@ void Simulate(int ** matrix, int n, int Generations, int rank, int p){
 int main(int argc, char *argv[]){
     int rank, p, i;
     struct timeval t1, t2;
-    int Generations = 300, n = 32;
+    int Generations = 3, n = 32; 
+
+    //int Generations = atoi(argv[2]), n = atoi(argv[1]);
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &p);
@@ -363,12 +365,14 @@ int main(int argc, char *argv[]){
    //Obtain the process specific seed
     cur_process_seed = seeds_rec[rank];
     matrix = GenerateInitialGoL(cur_process_seed, n, p);
-    Simulate(matrix, n, Generations, rank, p-1);
+    Simulate(matrix, n, Generations, rank, p);
     MPI_Reduce(&totalCommTime, &maxTotalCommTime, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
     MPI_Reduce(&simulationtime, &maxsimtime, 1, MPI_INT, MPI_MAX, 0, MPI_COMM_WORLD);
     if(rank == 0){
-	printf("The time for simulating %d generations on %d (n) total rows is [ %d ]",Generations,n,maxsimtime);
-   printf("Max total communication time is: %.8lf\n", maxTotalCommTime);
+	printf("The time for simulating %d generations on %d (n) total rows is [ %d ]\n",Generations,n,maxsimtime);
+   	printf("Max total communication time is: %d\n", maxTotalCommTime);
+	printf("Average time per generation is %d\n", maxsimtime/Generations);
+	printf("Total computation time %d\n", maxsimtime - maxTotalCommTime);
    }
     MPI_Finalize();
 
