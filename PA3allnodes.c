@@ -325,9 +325,9 @@ void Simulate(int ** matrix, int n, int Generations, int rank, int p){
 int main(int argc, char *argv[]){
     int rank, p, i;
     struct timeval t1, t2;
-    int Generations = 3, n = 32; 
+    //int Generations = 3, n = 32; 
 
-    //int Generations = atoi(argv[2]), n = atoi(argv[1]);
+    int Generations = atoi(argv[2]), n = atoi(argv[1]);
     MPI_Init(&argc, &argv);
     MPI_Comm_rank(MPI_COMM_WORLD, &rank);
     MPI_Comm_size(MPI_COMM_WORLD, &p);
